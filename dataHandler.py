@@ -1,12 +1,17 @@
 import re
+from datetime import datetime
 
 def decomposeDecription(strInput, varAliasesDict):
     """Возвращает набор параметров взятых из введённой строки"""
     strInput = strInput.lower()
-    return findAliases(strInput, varAliasesDict), confirmIsApple(strInput), checkColor(strInput), checkPackageType(strInput), figureWeight(strInput)
+    errors = []
+    weight, wMessage = figureWeight(strInput)
+    if wMessage != "":
+        errors.append(wMessage)
+    return findAliases(strInput, varAliasesDict), confirmIsApple(strInput), checkColor(strInput), checkPackageType(strInput), weight, errors
 
 def findAliases(strInput, varAliasesDict):
-    """Ищет в строке участки совпадающие с ключами передоваемого словаря и возвращает соответствующее значение словаря (первое совпадение)
+    """Ищет в строке участки совпадающие с ключами передаваемого словаря и возвращает соответствующее значение словаря (первое совпадение)
     Предполагается для использования со словарём Алиас -> Полное название сорта"""
     key = next((key for key in varAliasesDict
         if re.search(rf"\b{re.escape(str(key))}\b", strInput)), None)
@@ -16,17 +21,25 @@ def confirmIsApple(strInput):
     """Ищет в строке участки похожие на упоминание яблок и возвращает 'Яблоки' если находит что-то подходящее"""
     return "Яблоки" if re.search(r"\bяблок", strInput, flags=re.IGNORECASE) else "Nan"
 
-def checkColor(strInput):
-    """Ищет в строке участки похожие на упоминание цвета яблок и возвращает универсальное полное слово первого найденого цвета"""
-    colors = {
+FALSE_FRIENDS_RE = re.compile(r"\bкраснодар\w*|\bкраснояр\w*|\bкраснод\w*")
+
+colors = {
         "зелен": "Зеленый",
         "красн": "Красный",
         "желт": "Желтый",
     }
+
+def checkColor(strInput):
+    """Ищет в строке участки похожие на упоминание цвета яблок и возвращает универсальное полное слово первого найденого цвета"""
     strInput = strInput.lower().replace("ё", "е")
-    key = next((key for key in colors
-                if re.search(rf"\b{re.escape(str(key))}", strInput)), None)
-    return colors.get(key, "NaN")
+    text = FALSE_FRIENDS_RE.sub(" ", strInput)
+    best = None
+
+    for stem, color in colors.items():
+        m = re.search(rf"\b{stem}", text)
+        if m and (best is None or m.start() < best[0]):
+            best = (m.start(), color)
+    return best[1] if best else "NaN"
 
 def checkPackageType(strInput):
     packages = {
@@ -37,7 +50,6 @@ def checkPackageType(strInput):
     key = next((key for key in packages
                 if re.search(rf"\b{re.escape(str(key))}", strInput)), None)
     return packages.get(key, "NaN")
-
 
 conversionK = {
     "килограмм": 1, "кг": 1, "kg": 1,
@@ -57,14 +69,20 @@ ONLY_KG_RE = re.compile(
     rf"(?<![а-яёa-z\d])({_kg})(?![а-яёa-z])"
 )
 
+currentYear = datetime.now().year
 def figureWeight(strInput):
+    warningMessage = ""
     strInput = strInput.lower()
     found = WEIGHT_RE.search(strInput)
     if found:
-        value = float(found.group(1).replace(",", ".")) if found.group(1) else 1.0
-        return value * conversionK[found.group(2)]
+        value = float(found.group(1).replace(",", "."))
+        if currentYear - 3 < value <= currentYear and found.group(2) == 'г' and value.is_integer():
+            warningMessage = "Найденное значение веса похожа на год, рекомендуется проверить вручную."
+        elif value * conversionK[found.group(2)] > 50:
+            warningMessage = "Найденное значение подозрительно большое, рекомендуется проверить вручную."
+        return value * conversionK[found.group(2)], warningMessage
 
     if ONLY_KG_RE.search(strInput):
-        return 1.0
+        return 1.0, warningMessage
 
-    return "NaN"
+    return "NaN", warningMessage

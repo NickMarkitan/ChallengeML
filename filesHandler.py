@@ -1,6 +1,25 @@
 import pandas as pd
-from datetime import datetime
 import csv
+import logging
+from pathlib import Path
+from datetime import datetime
+
+def setup_logger(name=f"parser_{datetime.now().strftime("%y-%m-%d")}", log_dir="logs"):
+    Path(log_dir).mkdir(exist_ok=True)
+
+    logger = logging.getLogger(name)
+    if logger.handlers:  # защита от дублирования при повторном вызове
+        return logger
+
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(
+        Path(log_dir) / f"{name}.log", mode="a", encoding="utf-8"
+    )
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s | %(levelname)-7s | %(message)s")
+    )
+    logger.addHandler(handler)
+    return logger
 
 def getData ():
     """Загружает данные из файла с описаниями и возвращает в виде списка словарей"""
@@ -18,3 +37,6 @@ def saveResults(data):
     dataFrame = pd.DataFrame(data)
     timestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     dataFrame.to_excel(f"result_{timestamp}.xlsx", index=False)
+    log = setup_logger()
+    log.info("Результат сохранён в файл: %r", f"result_{timestamp}.xlsx")
+
