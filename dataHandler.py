@@ -15,11 +15,11 @@ def findAliases(strInput, varAliasesDict):
     Предполагается для использования со словарём Алиас -> Полное название сорта"""
     key = next((key for key in varAliasesDict
         if re.search(rf"\b{re.escape(str(key))}\b", strInput)), None)
-    return varAliasesDict[key] if key is not None else "NaN"
+    return varAliasesDict[key] if key is not None else None
 
 def confirmIsApple(strInput):
     """Ищет в строке участки похожие на упоминание яблок и возвращает 'Яблоки' если находит что-то подходящее"""
-    return "Яблоки" if re.search(r"\bяблок", strInput, flags=re.IGNORECASE) else "Nan"
+    return "Яблоки" if re.search(r"\bяблок", strInput, flags=re.IGNORECASE) else None
 
 FALSE_FRIENDS_RE = re.compile(r"\bкраснодар\w*|\bкраснояр\w*|\bкраснод\w*")
 
@@ -39,7 +39,7 @@ def checkColor(strInput):
         m = re.search(rf"\b{stem}", text)
         if m and (best is None or m.start() < best[0]):
             best = (m.start(), color)
-    return best[1] if best else "NaN"
+    return best[1] if best else None
 
 def checkPackageType(strInput):
     packages = {
@@ -49,7 +49,7 @@ def checkPackageType(strInput):
     strInput = strInput.lower()
     key = next((key for key in packages
                 if re.search(rf"\b{re.escape(str(key))}", strInput)), None)
-    return packages.get(key, "NaN")
+    return packages.get(key, None)
 
 conversionK = {
     "килограмм": 1, "кг": 1, "kg": 1,
@@ -85,4 +85,4 @@ def figureWeight(strInput):
     if ONLY_KG_RE.search(strInput):
         return 1.0, warningMessage
 
-    return "NaN", warningMessage
+    return None, warningMessage
